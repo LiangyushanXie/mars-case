@@ -1,0 +1,15 @@
+{
+  "dataset": "AI4MARS merged",
+  "version": "0.6",
+  "source_page": "https://zenodo.org/records/15995036",
+  "nasa_catalog": "https://data.nasa.gov/dataset/ai4mars-a-dataset-for-terrain-aware-autonomous-driving-on-mars",
+  "license": "CC-BY-4.0",
+  "archives": [
+    {
+      "name": "ai4mars-dataset-merged-0.6.zip",
+      "url": "https://zenodo.org/records/15995036/files/ai4mars-dataset-merged-0.6.zip?download=1",
+      "bytes": 16232481989,
+      "hashes": {"md5": "daf80a86021253292e6c425f97baa5c6"}
+    }
+  ]
+}
