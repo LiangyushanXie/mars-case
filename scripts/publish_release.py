@@ -5,7 +5,10 @@ import hashlib
 import json
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+from download_data import download_chunk
 
 ROOT = Path(__file__).resolve().parents[1]
 PART_SIZE = 1536 * 1024 * 1024
@@ -19,55 +22,42 @@ def main():
         raise RuntimeError("Insufficient runner disk space for the official dataset")
     completed_manifest = output / "parts.json"
     if not completed_manifest.exists():
+        parts = []
+        ranges = list(range(0, source["bytes"], PART_SIZE))
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futures = []
+            for index, start in enumerate(ranges):
+                end = min(start + PART_SIZE, source["bytes"]) - 1
+                name = source["name"] + f".part{index:02d}"
+                futures.append(
+                    pool.submit(
+                        download_chunk,
+                        source["url"],
+                        source["bytes"],
+                        start,
+                        end,
+                        output / name,
+                    )
+                )
+                parts.append({"name": name, "bytes": end - start + 1})
+            for done, future in enumerate(as_completed(futures), 1):
+                future.result()
+                print(f"Downloaded {done}/{len(parts)} complete parts", flush=True)
         md5 = hashlib.md5()
         sha256 = hashlib.sha256()
-        parts = []
-        total = 0
-        # Curl handles HTTPS redirects; no credentials are sent to the data source.
-        process = subprocess.Popen(
-            ["curl", "-fLsS", "--connect-timeout", "30", source["url"]],
-            stdout=subprocess.PIPE,
-        )
-        try:
-            while total < source["bytes"]:
-                name = source["name"] + f".part{len(parts):02d}"
-                path = output / name
-                part_hash = hashlib.sha256()
-                size = 0
-                with path.open("wb") as part:
-                    while size < PART_SIZE and total < source["bytes"]:
-                        block = process.stdout.read(
-                            min(
-                                4 * 1024 * 1024,
-                                PART_SIZE - size,
-                                source["bytes"] - total,
-                            )
-                        )
-                        if not block:
-                            raise RuntimeError(
-                                "Upstream download ended before its declared size"
-                            )
-                        part.write(block)
-                        md5.update(block)
-                        sha256.update(block)
-                        part_hash.update(block)
-                        size += len(block)
-                        total += len(block)
-                parts.append(
-                    {"name": name, "bytes": size, "sha256": part_hash.hexdigest()}
-                )
-                print(f"Downloaded {total}/{source['bytes']} bytes", flush=True)
-            if process.stdout.read(1) or process.wait() != 0:
-                raise RuntimeError("Unexpected source size or failed curl transfer")
-        finally:
-            if process.poll() is None:
-                process.terminate()
-                process.wait()
+        for part in parts:
+            digest = hashlib.sha256()
+            with (output / part["name"]).open("rb") as stream:
+                for block in iter(lambda: stream.read(4 * 1024 * 1024), b""):
+                    md5.update(block)
+                    sha256.update(block)
+                    digest.update(block)
+            part["sha256"] = digest.hexdigest()
         if md5.hexdigest() != source["hashes"]["md5"]:
             raise RuntimeError("Official MD5 mismatch; nothing will be uploaded")
         manifest = {
             "archive": source["name"],
-            "bytes": total,
+            "bytes": source["bytes"],
             "md5": md5.hexdigest(),
             "sha256": sha256.hexdigest(),
             "source_url": source["url"],

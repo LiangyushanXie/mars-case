@@ -9,6 +9,7 @@ import stat
 import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from http.client import HTTPException
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -63,7 +64,7 @@ def download_chunk(url, total, start, end, path):
             delay = int(retry_after) if retry_after.isdigit() else min(2**attempt, 60)
             time.sleep(min(max(delay, 2), 300))
             continue
-        except (OSError, TimeoutError):
+        except (OSError, TimeoutError, HTTPException):
             pass
         time.sleep(min(2**attempt, 30))
     raise RuntimeError(f"Download did not complete: {path.name}")
