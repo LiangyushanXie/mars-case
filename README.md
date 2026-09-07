@@ -4,7 +4,7 @@ A personal algorithm-engineering learning case built around **AI4MARS**: inspect
 
 ## Current status
 
-Dataset preparation is in progress. No model has been trained or evaluated in this repository.
+Dataset download is handed off to the user. Automated local and GitHub Actions downloads have been canceled, and incomplete local data has been removed. No complete AI4MARS dataset or trained model is currently included in this repository.
 
 The selected source is **AI4MARS merged v0.6**, a 16,232,481,989-byte ZIP linked from the [NASA Open Data catalog](https://data.nasa.gov/dataset/ai4mars-a-dataset-for-terrain-aware-autonomous-driving-on-mars) to [Zenodo record 15995036](https://zenodo.org/records/15995036).
 
